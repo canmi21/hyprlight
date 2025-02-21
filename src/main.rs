@@ -19,50 +19,39 @@ use sysinfo::{ProcessRefreshKind, RefreshKind, System};
     hyprlight i 5 -q  # Increase brightness by 5% quietly"
 )]
 struct Args {
-    /// Action to perform (increase or decrease brightness)
     #[command(subcommand)]
     action: Action,
 
-    /// Step value (default: 5)
     #[arg(default_value_t = 5)]
     step: u32,
 
-    /// Disable notifications
     #[arg(short, long, action = ArgAction::SetFalse)]
     notify: bool,
 }
 
 #[derive(clap::Subcommand, Debug, Clone, Copy)]
 enum Action {
-    /// Increase brightness
     I,
-    /// Decrease brightness
     D,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Check for existing instances
     check_existing_instances()?;
 
-    // Determine if we should use swayosd
     let use_swayosd = check_swayosd()?;
 
-    // Get current brightness
     let current_brightness = get_current_brightness()?;
 
-    // Adjust step based on current brightness
     let adjusted_step = adjust_step(current_brightness, args.step, args.action);
 
-    // Perform brightness adjustment
     if use_swayosd {
         adjust_with_swayosd(adjusted_step, args.action)?;
     } else {
         adjust_with_brightnessctl(adjusted_step, args.action, current_brightness)?;
     }
 
-    // Send notification if enabled
     if args.notify {
         send_notification(current_brightness)?;
     }
@@ -102,8 +91,7 @@ fn check_swayosd() -> Result<bool> {
         RefreshKind::new().with_processes(ProcessRefreshKind::new()),
     );
     system.refresh_processes();
-    
-    // 分离迭代器操作与结果判断
+
     let server_exists = system
         .processes_by_exact_name("swayosd-server")
         .next()
