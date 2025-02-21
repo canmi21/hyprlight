@@ -25,14 +25,6 @@ makepkg -si
 - `notify-daemon`
 - `cargo` (for building the package)
 
-## Configuration
-
-Once installed, you can configure **hyprlight** by adding it to your Hyprland configuration or using it directly from the terminal. To start **hyprlight** automatically when your session starts, you can add the following line to your `hyprland.conf`:
-
-```ini
-exec-once = hyprlight
-```
-
 ## Usage
 
 Once running, **hyprlight** allows you to control the brightness of your screen. You can use the following commands:
