@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{ArgAction, Parser};
 use notify_rust::Notification;
-use regex::Regex;
 use std::{
     env,
     process::{Command, Stdio},
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
 
     let use_swayosd = check_swayosd()?;
 
-    let current_brightness = get_current_brightness()?;
+    let (device_name, current_brightness) = get_current_brightness()?;
 
     let adjusted_step = adjust_step(current_brightness, args.step, args.action);
 
@@ -53,7 +52,7 @@ fn main() -> Result<()> {
     }
 
     if args.notify {
-        send_notification(current_brightness)?;
+        send_notification(device_name, current_brightness)?;
     }
 
     Ok(())
@@ -100,18 +99,24 @@ fn check_swayosd() -> Result<bool> {
     Ok(server_exists)
 }
 
-fn get_current_brightness() -> Result<u32> {
+fn get_current_brightness() -> Result<(String, u32)> {
     let output = Command::new("brightnessctl")
-        .arg("info")
+        .args(["info", "-m"])
         .output()
         .context("Failed to execute brightnessctl")?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
-    let re = Regex::new(r"\((\d+)%\)").context("Failed to create regex")?;
+    let parts: Vec<&str> = output_str.split(',').collect();
 
-    re.captures(&output_str)
-        .and_then(|c| c[1].parse().ok())
-        .ok_or_else(|| anyhow!("Failed to parse brightness percentage"))
+    if parts.len() < 4 {
+        return Err(anyhow!("Failed to parse brightnessctl output"));
+    }
+
+    let device_name = parts[0].to_string();
+    let brightness_str = parts[3].trim_end_matches('%');
+    let brightness: u32 = brightness_str.parse().context("Failed to parse brightness value")?;
+
+    Ok((device_name, brightness))
 }
 
 fn adjust_step(current: u32, step: u32, action: Action) -> u32 {
@@ -152,29 +157,18 @@ fn adjust_with_brightnessctl(step: u32, action: Action, current: u32) -> Result<
     Ok(())
 }
 
-fn send_notification(current: u32) -> Result<()> {
-    let output = Command::new("brightnessctl")
-        .arg("info")
-        .output()
-        .context("Failed to get brightness info")?;
-
-    let info_str = String::from_utf8_lossy(&output.stdout);
-    let device_info = info_str
-        .lines()
-        .find(|l| l.contains("Device:"))
-        .and_then(|l| l.split('\'').nth(1))
-        .unwrap_or_default();
-
-    let angle = ((current + 2) / 5) * 5;
+fn send_notification(device_name: String, current: u32) -> Result<()> {
     let home = env::var("HOME").context("Failed to get HOME directory")?;
+    let angle = ((current + 2) / 5) * 5;
     let icon = format!("{}/.config/dunst/icons/vol/vol-{}.svg", home, angle);
 
     let bar = "•".repeat((current as f32 / 15.0).ceil() as usize);
+    let summary = format!("{}% {}", current, bar);
 
     Notification::new()
-        .id(0987654376)
-        .summary(&format!("{}% {}", current, bar))
-        .body(device_info)
+        .id(987654321)
+        .summary(&summary)
+        .body(&device_name)
         .icon(&icon)
         .timeout(800)
         .show()
