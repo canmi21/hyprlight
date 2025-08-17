@@ -79,6 +79,7 @@ fn check_swayosd() -> Result<bool> {
     let swayosd_client_exists = Command::new("which")
         .arg("swayosd-client")
         .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .map(|s| s.success())?;
 
