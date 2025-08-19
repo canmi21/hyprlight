@@ -13,9 +13,9 @@ use sysinfo::{ProcessRefreshKind, RefreshKind, System};
     version,
     about = "Brightness control utility for Hyprland",
     after_help = "Example:
-    hyprlight i 10    # Increase brightness by 10%
+    hyprlight 10 i    # Increase brightness by 10%
     hyprlight d       # Decrease brightness by default step (5%)
-    hyprlight i 5 -q  # Increase brightness by 5% quietly"
+    hyprlight -n 5 i  # Increase brightness by 5% quietly"
 )]
 struct Args {
     #[command(subcommand)]
